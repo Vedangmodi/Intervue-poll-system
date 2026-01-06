@@ -23,6 +23,9 @@ function initializeSocket(io) {
           return;
         }
 
+        // Ensure user exists and is active
+        await userService.createUser(userId, name, role);
+
         // Update socket ID for user
         await userService.updateSocketId(userId, socket.id);
         activeConnections.set(socket.id, { userId, name, role });
@@ -56,6 +59,10 @@ function initializeSocket(io) {
         if (role === 'student') {
           const pollState = await getStudentPollState(userId);
           socket.emit('poll_state', pollState);
+
+          // Notify teachers about updated students list
+          const students = await userService.getActiveStudents();
+          io.emit('students_list', { students });
         }
       } catch (error) {
         socket.emit('error', { message: error.message });
@@ -161,23 +168,49 @@ function initializeSocket(io) {
         }
 
         const { studentId } = data;
+        
+        // First, get the student's socketId from database before kicking out
+        const User = require('../models/User.model');
+        const studentUser = await User.findOne({ userId: studentId });
+        
+        if (!studentUser) {
+          socket.emit('error', { message: 'Student not found' });
+          return;
+        }
+
+        // Kick out the student
         const user = await userService.kickOutStudent(studentId);
 
-        // Find student's socket and notify them
-        const studentSocket = Array.from(io.sockets.sockets.values())
-          .find(s => {
-            const conn = activeConnections.get(s.id);
-            return conn && conn.userId === studentId;
-          });
+        // Find student's socket using socketId from database
+        let studentSocket = null;
+        if (studentUser.socketId) {
+          studentSocket = io.sockets.sockets.get(studentUser.socketId);
+        }
+        
+        // Fallback: try to find by activeConnections
+        if (!studentSocket) {
+          studentSocket = Array.from(io.sockets.sockets.values())
+            .find(s => {
+              const conn = activeConnections.get(s.id);
+              return conn && conn.userId === studentId;
+            });
+        }
 
+        // Notify student if socket found
         if (studentSocket) {
           studentSocket.emit('kicked_out');
+          console.log(`Kicked out student ${studentId} and notified via socket ${studentSocket.id}`);
+        } else {
+          console.log(`Student ${studentId} was kicked out but socket not found (may be disconnected)`);
         }
 
         // Update students list for teacher
         const students = await userService.getActiveStudents();
         io.emit('students_list', { students });
+        
+        socket.emit('kick_success', { studentId, message: 'Student kicked out successfully' });
       } catch (error) {
+        console.error('Error kicking student:', error);
         socket.emit('error', { message: error.message });
       }
     });
@@ -231,6 +264,10 @@ function initializeSocket(io) {
         if (connection) {
           await userService.disconnectUser(socket.id);
           activeConnections.delete(socket.id);
+
+          // Update students list for teachers after a disconnect
+          const students = await userService.getActiveStudents();
+          io.emit('students_list', { students });
         }
       } catch (error) {
         console.error('Error handling disconnect:', error);
@@ -297,10 +334,16 @@ function startPollTimer(io, poll) {
  * Get student poll state
  */
 async function getStudentPollState(userId) {
+  // Check if user is kicked out first
+  const isKickedOut = await userService.isKickedOut(userId);
+  if (isKickedOut) {
+    return { kickedOut: true };
+  }
+
   const poll = await pollService.getActivePoll();
   
   if (!poll) {
-    return { poll: null, hasVoted: false };
+    return { poll: null, hasVoted: false, kickedOut: false };
   }
 
   const vote = await Vote.findOne({ 

@@ -38,9 +38,10 @@ const StudentNameEntry = () => {
   return (
     <div className="student-name-entry">
       <div className="student-name-entry-container">
+        <h1 className="logo">Intervue Poll</h1>
         <h1 className="student-name-entry-title">Let's Get Started</h1>
         <p className="student-name-entry-subtitle">
-          If you're a student, you'll be able to submit your answers, participate in live polls, 
+          If you're a student, you'll be able to <strong>submit your answers</strong>, participate in live polls, 
           and see how your responses compare with your classmates
         </p>
 

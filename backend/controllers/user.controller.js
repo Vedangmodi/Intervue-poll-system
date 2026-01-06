@@ -37,19 +37,32 @@ class UserController {
   async kickOutStudent(req, res) {
     try {
       const { studentId } = req.params;
+      
+      // Get student's socketId before kicking out
+      const User = require('../models/User.model');
+      const studentUser = await User.findOne({ userId: studentId });
+      
+      if (!studentUser) {
+        return res.status(404).json({ error: 'Student not found' });
+      }
+
+      // Kick out the student
       const user = await userService.kickOutStudent(studentId);
       
       // Notify student via socket if connected
       if (global.io) {
-        const studentSocket = Array.from(global.io.sockets.sockets.values())
-          .find(s => {
-            // Find socket by checking active connections
-            // This would need to be tracked in socket handler
-            return false; // Simplified - actual implementation would check socket map
-          });
-
+        let studentSocket = null;
+        
+        // Find socket using socketId from database
+        if (studentUser.socketId) {
+          studentSocket = global.io.sockets.sockets.get(studentUser.socketId);
+        }
+        
         if (studentSocket) {
           studentSocket.emit('kicked_out');
+          console.log(`Kicked out student ${studentId} via API and notified via socket ${studentSocket.id}`);
+        } else {
+          console.log(`Student ${studentId} was kicked out via API but socket not found (may be disconnected)`);
         }
 
         // Update students list for teacher
@@ -59,6 +72,7 @@ class UserController {
       
       res.json({ success: true, user });
     } catch (error) {
+      console.error('Error in kickOutStudent controller:', error);
       res.status(400).json({ error: error.message });
     }
   }

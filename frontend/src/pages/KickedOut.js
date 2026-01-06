@@ -15,14 +15,12 @@ const KickedOut = () => {
   return (
     <div className="kicked-out">
       <div className="kicked-out-container">
-        <div className="kicked-out-icon">🚫</div>
+        {/* <div className="kicked-out-icon">🚫</div> */}
+        <h1 className="logo">Intervue Poll</h1>
         <h1 className="kicked-out-title">You've been Kicked out!</h1>
         <p className="kicked-out-message">
           Looks like the teacher had removed you from the poll system. Please Try again sometime.
         </p>
-        <button className="btn btn-primary kicked-out-button" onClick={handleTryAgain}>
-          Go Back Home
-        </button>
       </div>
     </div>
   );

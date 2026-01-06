@@ -64,7 +64,15 @@ export const PollProvider = ({ children }) => {
 
     socket.on('poll_state', (data) => {
       // Handle poll state sent to student on registration
-      const { poll, hasVoted: voted, votedOption: option } = data;
+      const { poll, hasVoted: voted, votedOption: option, kickedOut } = data;
+      
+      // Check if student is kicked out
+      if (kickedOut) {
+        setKickedOut(true);
+        stopTimer();
+        return;
+      }
+      
       if (poll) {
         setActivePoll(poll);
         setHasVoted(voted || false);

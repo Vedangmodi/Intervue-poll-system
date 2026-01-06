@@ -92,7 +92,8 @@ class UserService {
     try {
       await User.updateOne(
         { userId },
-        { socketId, isActive: true }
+        { socketId, isActive: true },
+        { upsert: true }
       );
     } catch (error) {
       console.error('Error updating socket ID:', error);

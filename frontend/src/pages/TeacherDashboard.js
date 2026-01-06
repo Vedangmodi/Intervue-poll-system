@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePoll } from '../contexts/PollContext';
-import { usePollTimer } from '../hooks/usePollTimer';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import './TeacherDashboard.css';
@@ -18,20 +17,25 @@ const TeacherDashboard = () => {
     activePoll,
     pollResults,
     students,
-    createPoll,
     startPoll,
     kickStudent,
     connected,
     registerUser,
-    socket
+    socket,
+    timer: contextTimer
   } = usePoll();
 
-  const { timer, formatTime, startTimer, stopTimer } = usePollTimer();
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+  const [correctAnswers, setCorrectAnswers] = useState([null, null]); // Track correct answer for each option (true/false/null)
   const [duration, setDuration] = useState(60);
-  const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(false);
   const [createdPoll, setCreatedPoll] = useState(null);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -51,36 +55,24 @@ const TeacherDashboard = () => {
     }
   }, [user, navigate]);
 
-  // Recover state on mount
+  // Auto-show create poll form when teacher first arrives (no active poll)
   useEffect(() => {
-    const recoverState = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/polls/active`);
-        if (response.data.poll) {
-          const remainingTime = response.data.poll.remainingTime || 0;
-          if (remainingTime > 0) {
-            startTimer(remainingTime);
-          }
-        }
-      } catch (error) {
-        console.error('Error recovering state:', error);
-      }
-    };
-
-    if (connected) {
-      recoverState();
+    if (user && user.role === 'teacher' && !activePoll && !showCreatePoll && !createdPoll) {
+      setShowCreatePoll(true);
     }
-  }, [connected, startTimer]);
+  }, [user, activePoll, showCreatePoll, createdPoll]);
 
   const handleAddOption = () => {
     if (options.length < 10) {
       setOptions([...options, '']);
+      setCorrectAnswers([...correctAnswers, null]);
     }
   };
 
   const handleRemoveOption = (index) => {
     if (options.length > 2) {
       setOptions(options.filter((_, i) => i !== index));
+      setCorrectAnswers(correctAnswers.filter((_, i) => i !== index));
     }
   };
 
@@ -88,6 +80,12 @@ const TeacherDashboard = () => {
     const newOptions = [...options];
     newOptions[index] = value;
     setOptions(newOptions);
+  };
+
+  const handleCorrectAnswerChange = (index, value) => {
+    const newCorrectAnswers = [...correctAnswers];
+    newCorrectAnswers[index] = value === 'yes' ? true : value === 'no' ? false : null;
+    setCorrectAnswers(newCorrectAnswers);
   };
 
   const handleCreatePoll = async (e) => {
@@ -203,10 +201,21 @@ const TeacherDashboard = () => {
 
   const canStartNewPoll = !activePoll || (pollResults && activePoll.status === 'completed');
 
+  const toggleSupportPanel = () => {
+    if (showChat || showParticipants) {
+      setShowChat(false);
+      setShowParticipants(false);
+    } else {
+      // Default to chat tab open
+      setShowChat(true);
+      setShowParticipants(false);
+    }
+  };
+
   return (
     <div className="teacher-dashboard">
       <div className="teacher-dashboard-header">
-        <h1 className="dashboard-title">Intervue Poll</h1>
+        <h1 className="logo">Intervue Poll</h1>
         <div className="header-actions">
           <button
             className="btn btn-secondary"
@@ -236,10 +245,22 @@ const TeacherDashboard = () => {
 
         {showCreatePoll && (
           <div className="create-poll-form">
-            <h2>Create New Poll</h2>
+            <h2>Let's Get Started</h2>
             <form onSubmit={handleCreatePoll}>
               <div className="form-group">
-                <label className="form-label">Enter your question</label>
+                <div className="question-header">
+                  <label className="form-label">Enter your question</label>
+                  <select
+                    className="input timer-select"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                  >
+                    <option value={30}>30 seconds</option>
+                    <option value={60}>60 seconds</option>
+                    <option value={90}>90 seconds</option>
+                    <option value={120}>120 seconds</option>
+                  </select>
+                </div>
                 <div className="question-input-wrapper">
                   <textarea
                     className="input question-input"
@@ -254,31 +275,45 @@ const TeacherDashboard = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Timer Duration</label>
-                <select
-                  className="input"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
-                  <option value={30}>30 seconds</option>
-                  <option value={60}>60 seconds</option>
-                  <option value={90}>90 seconds</option>
-                  <option value={120}>120 seconds</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Edit Options</label>
+                <div className="options-header">
+                  <label className="form-label">Edit Options</label>
+                  <label className="form-label">Is it Correct?</label>
+                </div>
                 {options.map((option, index) => (
-                  <div key={index} className="option-input-wrapper">
-                    <input
-                      type="text"
-                      className="input option-input"
-                      value={option}
-                      onChange={(e) => handleOptionChange(index, e.target.value)}
-                      placeholder={`Option ${index + 1}`}
-                      maxLength={50}
-                    />
+                  <div key={index} className="option-row">
+                    <div className="option-number">{index + 1}</div>
+                    <div className="option-input-wrapper">
+                      <input
+                        type="text"
+                        className="input option-input"
+                        value={option}
+                        onChange={(e) => handleOptionChange(index, e.target.value)}
+                        placeholder={`Option ${index + 1}`}
+                        maxLength={50}
+                      />
+                    </div>
+                    <div className="correct-answer-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name={`correct-${index}`}
+                          value="yes"
+                          checked={correctAnswers[index] === true}
+                          onChange={(e) => handleCorrectAnswerChange(index, e.target.value)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name={`correct-${index}`}
+                          value="no"
+                          checked={correctAnswers[index] === false}
+                          onChange={(e) => handleCorrectAnswerChange(index, e.target.value)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
                     {options.length > 2 && (
                       <button
                         type="button"
@@ -301,28 +336,6 @@ const TeacherDashboard = () => {
                 )}
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Is it Correct?</label>
-                <div className="checkbox-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={isCorrect}
-                      onChange={(e) => setIsCorrect(e.target.checked)}
-                    />
-                    Yes
-                  </label>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={!isCorrect}
-                      onChange={(e) => setIsCorrect(!e.target.checked)}
-                    />
-                    No
-                  </label>
-                </div>
-              </div>
-
               <div className="form-actions">
                 <button
                   type="button"
@@ -331,6 +344,7 @@ const TeacherDashboard = () => {
                     setShowCreatePoll(false);
                     setQuestion('');
                     setOptions(['', '']);
+                    setCorrectAnswers([null, null]);
                     setCreatedPoll(null);
                   }}
                 >
@@ -341,7 +355,7 @@ const TeacherDashboard = () => {
                   className="btn btn-primary"
                   disabled={loading}
                 >
-                  {loading ? 'Creating...' : 'Create Poll'}
+                  {loading ? 'Creating...' : 'Ask Question'}
                 </button>
               </div>
             </form>
@@ -355,23 +369,14 @@ const TeacherDashboard = () => {
               <div className="poll-question-section">
                 <div className="poll-header">
                   <h2 className="poll-question">{activePoll.question}</h2>
-                  <div className="poll-timer">Timer: {formatTime(timer || 0)}</div>
+                  <div className="poll-timer">Timer: {formatTime(contextTimer || 0)}</div>
                 </div>
 
-                {/* Options Display */}
-                <div className="poll-options-display">
-                  {activePoll.options.map((option, index) => (
-                    <div key={index} className="poll-option-display">
-                      {option.text}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Action Buttons */}
+                {/* Action Button - align bottom right like Figma */}
                 <div className="poll-actions-bar">
                   {canStartNewPoll && (
                     <button
-                      className="btn btn-primary"
+                      className="btn btn-primary ask-new-question-btn"
                       onClick={() => setShowCreatePoll(true)}
                     >
                       + Ask a new question
@@ -380,99 +385,95 @@ const TeacherDashboard = () => {
                 </div>
 
                 {/* Results Section */}
-                {pollResults ? (
-                  <div className="poll-results">
-                    <h3>Question</h3>
-                    <div className="results-list">
-                      {pollResults.results.map((result, index) => (
-                        <div key={index} className="result-item">
-                          <div className="result-header">
-                            <span className="result-option-number">{result.optionIndex + 1}</span>
-                            <span className="result-option-text">{result.text}</span>
-                            <span className="result-percentage">{result.percentage}%</span>
-                          </div>
-                          <div className="result-bar-container">
-                            <div
-                              className="result-bar"
-                              style={{ width: `${result.percentage}%` }}
-                            ></div>
-                          </div>
+                <div className="poll-results">
+                  <div className="results-list">
+                    {(pollResults?.results || activePoll.options.map((opt, idx) => ({
+                      optionIndex: idx,
+                      text: opt.text,
+                      percentage: 0
+                    }))).map((result, index) => (
+                      <div key={index} className="result-item">
+                        <div className="result-header">
+                          <span className="result-option-number">{result.optionIndex + 1}</span>
+                          <span className="result-option-text">{result.text}</span>
+                          <span className="result-percentage">{result.percentage}%</span>
                         </div>
-                      ))}
-                    </div>
+                        <div className="result-bar-container">
+                          <div
+                            className="result-bar"
+                            style={{ width: `${result.percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <div className="waiting-for-votes">
-                    <p>Waiting for students to submit answers...</p>
-                  </div>
-                )}
+                </div>
               </div>
 
-              {/* Right side - Chat and Participants Tabs */}
-              <div className="poll-sidebar">
-                <div className="sidebar-tabs">
-                  <button
-                    className={`sidebar-tab ${!showParticipants && !showChat ? 'active' : ''}`}
-                    onClick={() => {
-                      setShowParticipants(false);
-                      setShowChat(false);
-                    }}
-                  >
-                    Question
-                  </button>
-                  <button
-                    className={`sidebar-tab ${showChat ? 'active' : ''}`}
-                    onClick={() => {
-                      setShowChat(true);
-                      setShowParticipants(false);
-                    }}
-                  >
-                    Chat
-                  </button>
-                  <button
-                    className={`sidebar-tab ${showParticipants ? 'active' : ''}`}
-                    onClick={() => {
-                      setShowParticipants(true);
-                      setShowChat(false);
-                    }}
-                  >
-                    Participants ({students.length})
-                  </button>
-                </div>
+            </div>
+          </div>
+        )}
 
-                <div className="sidebar-content">
-                  {showChat ? (
-                    <div className="chat-panel">
-                      <h3>Chat</h3>
-                      <p className="chat-placeholder">Chat feature coming soon...</p>
-                    </div>
-                  ) : showParticipants ? (
-                    <div className="participants-panel">
-                      <h3>Participants</h3>
-                      <table className="participants-table">
-                        <thead>
-                          <tr>
-                            <th>Name</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {students.length === 0 ? (
+        {/* Floating chat/participants panel trigger */}
+        {activePoll && (
+          <>
+            <button
+              className="floating-chat-button"
+              type="button"
+              onClick={toggleSupportPanel}
+            >
+              <span className="floating-chat-icon">Chat</span>
+            </button>
+
+            {(showChat || showParticipants) && (
+              <div className="floating-support-panel">
+                <div className="poll-sidebar">
+                  <div className="sidebar-tabs">
+                    <button
+                      className={`sidebar-tab ${showChat ? 'active' : ''}`}
+                      onClick={() => {
+                        setShowChat(true);
+                        setShowParticipants(false);
+                      }}
+                    >
+                      Chat
+                    </button>
+                    <button
+                      className={`sidebar-tab ${showParticipants ? 'active' : ''}`}
+                      onClick={() => {
+                        setShowParticipants(true);
+                        setShowChat(false);
+                      }}
+                    >
+                      Participants ({students.length})
+                    </button>
+                  </div>
+
+                  <div className="sidebar-content">
+                    {showChat ? (
+                      <div className="chat-panel">
+                        <h3>Chat</h3>
+                        <p className="chat-placeholder">Chat feature coming soon...</p>
+                      </div>
+                    ) : showParticipants ? (
+                      <div className="participants-panel">
+                        <h3>Participants</h3>
+                        <table className="participants-table">
+                          <thead>
                             <tr>
-                              <td colSpan="2" className="no-participants">No participants yet</td>
+                              <th>Name</th>
+                              <th>Action</th>
                             </tr>
-                          ) : (
-                            students.map((student) => {
-                              // Check if student has voted by checking if pollResults exists and has votes
-                              // We'll fetch vote info from API if needed, for now show all students
-                              const hasVoted = pollResults && pollResults.totalVotes > 0;
-                              
-                              return (
+                          </thead>
+                          <tbody>
+                            {students.length === 0 ? (
+                              <tr>
+                                <td colSpan="2" className="no-participants">No participants yet</td>
+                              </tr>
+                            ) : (
+                              students.map((student) => (
                                 <tr key={student.userId}>
-                                  <td>
-                                    {student.name}
-                                    {hasVoted && <span className="voted-badge">✓ Voted</span>}
-                                  </td>
+                                  <td>{student.name}</td>
                                   <td>
                                     <button
                                       className="btn-kick"
@@ -482,34 +483,22 @@ const TeacherDashboard = () => {
                                     </button>
                                   </td>
                                 </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                      {pollResults && (
-                        <p className="participants-summary">
-                          {pollResults.totalVotes} of {students.length} students have voted
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="question-panel">
-                      <h3>Question</h3>
-                      <p className="question-text">{activePoll.question}</p>
-                      <div className="question-options-list">
-                        {activePoll.options.map((option, index) => (
-                          <div key={index} className="question-option-item">
-                            {index + 1}. {option.text}
-                          </div>
-                        ))}
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                        {pollResults && (
+                          <p className="participants-summary">
+                            {pollResults.totalVotes} of {students.length} students have voted
+                          </p>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
         {createdPoll && !activePoll && (

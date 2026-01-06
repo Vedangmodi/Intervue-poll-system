@@ -33,4 +33,5 @@ Thumbs.db
 # MongoDB
 data/
 
-
+# Ignore all markdown files
+*.md

@@ -23,6 +23,7 @@ const RoleSelection = () => {
   return (
     <div className="role-selection">
       <div className="role-selection-container">
+        <h1 className="logo">Intervue Poll</h1>
         <h1 className="role-selection-title">Welcome to the Live Polling System</h1>
         <p className="role-selection-subtitle">
           Please select the role that best describes you to begin using the live polling system

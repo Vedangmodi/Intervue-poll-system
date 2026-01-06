@@ -46,6 +46,9 @@ const PollHistory = () => {
     );
   }
 
+  // Create a reversed copy for display (oldest first, newest last)
+  const displayHistory = [...history].reverse();
+
   return (
     <div className="poll-history">
       <div className="poll-history-header">
@@ -59,16 +62,17 @@ const PollHistory = () => {
       </div>
 
       <div className="poll-history-content">
-        {history.length === 0 ? (
+        {displayHistory.length === 0 ? (
           <div className="no-history">
             <p>No poll history available yet.</p>
           </div>
         ) : (
           <div className="history-list">
-            {history.map((item, index) => (
+            {/* Display reversed history (oldest first) */}
+            {displayHistory.map((item, index) => (
               <div key={item.pollId || index} className="history-item">
                 <h2 className="history-question-title">
-                  Question {index + 1}
+                  Question {index + 1} {/* Sequential numbering from top to bottom */}
                 </h2>
                 <p className="history-question">{item.question}</p>
                 
@@ -111,5 +115,3 @@ const PollHistory = () => {
 };
 
 export default PollHistory;
-
-

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePoll } from '../contexts/PollContext';
-import { usePollTimer } from '../hooks/usePollTimer';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import './StudentDashboard.css';
@@ -23,7 +22,12 @@ const StudentDashboard = () => {
     setActivePoll
   } = usePoll();
   
-  const { timer, formatTime, startTimer, stopTimer } = usePollTimer();
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const [selectedOption, setSelectedOption] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recovering, setRecovering] = useState(true);
@@ -61,10 +65,6 @@ const StudentDashboard = () => {
         if (response.data.poll) {
           // Set active poll from recovery
           setActivePoll(response.data.poll);
-          const remainingTime = response.data.poll.remainingTime || 0;
-          if (remainingTime > 0) {
-            startTimer(remainingTime);
-          }
         } else {
           setActivePoll(null);
         }
@@ -89,7 +89,7 @@ const StudentDashboard = () => {
     if (user && connected) {
       recoverState();
     }
-  }, [user, connected, navigate, startTimer]);
+  }, [user, connected, navigate]);
 
   // Handle vote submission
   const handleVote = async () => {
@@ -110,7 +110,7 @@ const StudentDashboard = () => {
   };
 
   // Display results if poll is completed or user has voted
-  const showResults = pollResults || (hasVoted && (activePoll?.status === 'completed' || timer === 0));
+  const showResults = pollResults || (hasVoted && (activePoll?.status === 'completed' || contextTimer === 0));
 
   if (recovering) {
     return (
@@ -163,7 +163,7 @@ const StudentDashboard = () => {
             <div className="question-header">
               <h1 className="question-number">Question 1</h1>
               <div className="timer-display">
-                {formatTime(timer || 0)}
+                {formatTime(contextTimer || 0)}
               </div>
             </div>
 
@@ -175,7 +175,7 @@ const StudentDashboard = () => {
                   key={index}
                   className={`option-button ${selectedOption === index ? 'selected' : ''}`}
                   onClick={() => !hasVoted && setSelectedOption(index)}
-                  disabled={hasVoted || timer === 0}
+                  disabled={hasVoted || contextTimer === 0}
                 >
                   <span className="option-number">{index + 1}.</span>
                   <span className="option-text">{option.text}</span>
@@ -186,12 +186,12 @@ const StudentDashboard = () => {
             <button
               className="btn btn-primary submit-button"
               onClick={handleVote}
-              disabled={selectedOption === null || hasVoted || timer === 0 || loading}
+              disabled={selectedOption === null || hasVoted || contextTimer === 0 || loading}
             >
               {hasVoted ? 'Already Voted' : 'Submit'}
             </button>
 
-            {timer === 0 && !hasVoted && (
+            {contextTimer === 0 && !hasVoted && (
               <p className="time-up-message">Time's up! Results will be shown shortly.</p>
             )}
           </div>
