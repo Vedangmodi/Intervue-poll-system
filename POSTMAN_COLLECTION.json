@@ -1,0 +1,261 @@
+{
+	"info": {
+		"name": "Intervue Poll API",
+		"description": "Complete API collection for Intervue Poll System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001",
+			"type": "string"
+		},
+		{
+			"key": "pollId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "studentId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Check if the server is running"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Polls",
+			"item": [
+				{
+					"name": "Create Poll",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"Which planet is known as the Red Planet?\",\n  \"options\": [\"Mars\", \"Venus\", \"Jupiter\", \"Saturn\"],\n  \"duration\": 60\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/polls",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls"]
+						},
+						"description": "Create a new poll. Returns the created poll with _id. Save the _id to {{pollId}} variable."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Poll",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/polls/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls", "active"]
+						},
+						"description": "Get the currently active poll"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Poll State",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/polls/state?userId={{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls", "state"],
+							"query": [
+								{
+									"key": "userId",
+									"value": "{{userId}}",
+									"description": "User ID from create user endpoint"
+								}
+							]
+						},
+						"description": "Get poll state for a specific user (for state recovery)"
+					},
+					"response": []
+				},
+				{
+					"name": "Start Poll",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/polls/{{pollId}}/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls", "{{pollId}}", "start"]
+						},
+						"description": "Start an existing poll. Requires pollId from create poll response."
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Vote",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pollId\": \"{{pollId}}\",\n  \"studentId\": \"{{userId}}\",\n  \"studentName\": \"Test Student\",\n  \"optionIndex\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/polls/vote",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls", "vote"]
+						},
+						"description": "Submit a vote. optionIndex is 0-based (0 = first option, 1 = second option, etc.)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Poll Results",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/polls/{{pollId}}/results",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls", "{{pollId}}", "results"]
+						},
+						"description": "Get results for a specific poll"
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Poll",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/polls/{{pollId}}/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "polls", "{{pollId}}", "complete"]
+						},
+						"description": "Manually complete a poll"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"role\": \"student\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"]
+						},
+						"description": "Create a new user. Returns user with userId. Save userId to {{userId}} variable. Role can be 'teacher' or 'student'."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Students",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/students",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users", "students"]
+						},
+						"description": "Get list of all active students"
+					},
+					"response": []
+				},
+				{
+					"name": "Kick Student",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/students/{{studentId}}/kick",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users", "students", "{{studentId}}", "kick"]
+						},
+						"description": "Kick out a student. Requires studentId from get active students or create user response."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "History",
+			"item": [
+				{
+					"name": "Get Poll History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/history?limit=50",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "history"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Number of polls to return (default: 50)"
+								}
+							]
+						},
+						"description": "Get history of completed polls"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
+

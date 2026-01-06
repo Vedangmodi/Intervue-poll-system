@@ -1,0 +1,150 @@
+.poll-history {
+  min-height: 100vh;
+  background: #F9FAFB;
+}
+
+.poll-history-header {
+  background: white;
+  padding: 20px 32px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.poll-history-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.no-history {
+  background: white;
+  border-radius: 16px;
+  padding: 64px 32px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.no-history p {
+  font-size: 18px;
+  color: #6B7280;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.history-item {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.history-question-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 12px;
+}
+
+.history-question {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.history-results {
+  margin-bottom: 16px;
+}
+
+.history-result-item {
+  padding: 16px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.result-option-number {
+  font-weight: 600;
+  color: #6B7280;
+  min-width: 24px;
+}
+
+.result-option-text {
+  flex: 1;
+  font-weight: 500;
+  color: #1F2937;
+}
+
+.result-percentage {
+  font-weight: 700;
+  color: #4F46E5;
+  font-size: 18px;
+}
+
+.result-bar-container {
+  height: 8px;
+  background: #E5E7EB;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.result-bar {
+  height: 100%;
+  background: #4F46E5;
+  transition: width 0.3s ease;
+}
+
+.history-total-votes {
+  margin-top: 16px;
+  font-weight: 600;
+  color: #6B7280;
+  text-align: center;
+}
+
+.no-results {
+  text-align: center;
+  color: #9CA3AF;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .poll-history-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .history-item {
+    padding: 24px 16px;
+  }
+}
+
+
